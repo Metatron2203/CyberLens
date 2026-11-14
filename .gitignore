@@ -1,0 +1,34 @@
+**/.venv/
+**/__pycache__/
+**/*.pyc
+frontend/node_modules/
+frontend/.next/
+frontend/.env.local
+backend/.env
+backend/cyberlens.db
+backend/cyberlens.db-*
+backend/data/*
+!backend/data/.gitkeep
+backend/models/*
+!backend/models/.gitkeep
+*.log
+
+# Variables de entorno privadas
+**/.env*
+!**/.env.example
+
+# Bases de datos adicionales
+*.db
+*.db-*
+*.sqlite
+*.sqlite3
+
+# Modelos y resultados locales
+*.joblib
+*.pkl
+.coverage
+htmlcov/
+
+# Archivos temporales
+.DS_Store
+Thumbs.db

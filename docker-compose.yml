@@ -1,0 +1,20 @@
+# Infraestructura FUTURA OPCIONAL. CyberLens V0.2.1 NO usa Docker ni PostgreSQL.
+# Para habilitarla, define POSTGRES_PASSWORD en el entorno y ejecuta:
+#   docker compose --profile future-postgres up -d
+services:
+  db:
+    profiles: ["future-postgres"]
+    image: postgres:16
+    container_name: cyberlens-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: cyberlens
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD antes de activar este perfil}
+      POSTGRES_DB: cyberlens
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - cyberlens_pgdata:/var/lib/postgresql/data
+
+volumes:
+  cyberlens_pgdata:
