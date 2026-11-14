@@ -1,131 +1,123 @@
-# CyberLens V0.3 — Machine Learning experimental
+# CyberLens — V0.2.1 (etapa 1: corrección y estabilización)
 
-**Proyecto de título, Ingeniería en Informática.** Evalúa características estructurales de una URL para advertir sobre señales asociadas al phishing **sin visitar la dirección**. Conserva el análisis heurístico, los indicadores y el historial aislado por navegador de V0.2.1 y agrega un módulo ML opcional.
+Plataforma web académica para **evaluar señales estructurales de riesgo en URLs** antes de visitarlas. Devuelve una puntuación heurística orientativa, indicadores comprensibles e historial **privado para cada navegador**. No consulta el contenido remoto.
 
-> **ADVERTENCIA:** BAJO no significa SEGURO. Los indicadores son heurísticos y la probabilidad ML es una estimación **no calibrada** que requiere validación sobre datos representativos. CyberLens no certifica sitios, no analiza su contenido, no sigue redirecciones y no está listo para una operación comercial o de seguridad empresarial.
+> **Advertencia:** un resultado BAJO **no demuestra que un sitio sea seguro**. La detección aún requiere validación con datos etiquetados, pruebas de usabilidad y, en otra etapa, Machine Learning. No publicar V0.2.1 como servicio empresarial o verificador garantizado.
 
-## Resumen de la V0.3
+## Tecnologías
 
-- Backend: Python 3.11+, FastAPI, Pydantic, SQLAlchemy y SQLite.
-- Frontend: Next.js 15.5.29, React 19.1.10, TypeScript y Tailwind CSS 4.
-- ML: scikit-learn y joblib; **25 características numéricas** de una URL (longitud, estructura, signos, tokens, marcas, indicios de URLs anidadas, etc.).
-- Entrenamiento: **Regresión Logística y Random Forest**; elección usando validación, evaluación final aislada, comparación con el detector heurístico y matriz de confusión. Los grupos de dominio no se comparten entre entrenamiento, validación y test.
-- API: `/api/analyze` incluye sección `ml`; `GET /api/ml/status` comunica si hay modelo y, cuando existe, métricas agregadas.
-- Persistencia: URL reducida al origen y contenido omitido, historial por cookie de sesión y resultado ML opcional. Migración automática desde versiones anteriores.
-- **35 pruebas automatizadas** verificadas en entorno de preparación, incluidas pruebas con datos FICTICIOS. **No incluyen evaluación real de detección.**
+- Interfaz: Next.js **15.5.29**, React **19.1.10**, TypeScript y Tailwind CSS 4.
+- API: Python 3.11+, FastAPI, Pydantic.
+- Persistencia: SQLite y SQLAlchemy.
+- Pruebas: `unittest` y `fastapi.testclient` (necesita `httpx`).
+- Machine Learning: pendiente, fuera de V0.2.1. Cuando corresponda, instalar `backend/requirements-ml.txt`.
 
-**Importante:** el ZIP **NO contiene modelos entrenados con datos reales ni feeds de phishing**. El modelo de inferencia solo se activa después de que entrenes uno localmente con fuentes autorizadas. Nunca presentaremos las métricas de un dataset sintético como precisión real.
+## Ejecución en Windows
 
-## Windows: instalar, comprobar y arrancar
+Necesitas **Python 3.11+** y **Node.js LTS** (recomendado Node 22), ambos accesibles desde PowerShell.
 
-Requisitos: Python 3.11+ (recomendado 3.12) y Node.js LTS (probado Node 24 en el equipo del desarrollador). Cuando utilices `fnm`, activa Node en cada PowerShell que lo necesite:
-
-```powershell
-fnm env --use-on-cd --shell powershell | Out-String | Invoke-Expression
-fnm use 24
-```
-
-Descomprime el ZIP en una carpeta nueva **CyberLens**. Abre una terminal PowerShell en **la carpeta raíz** (debe contener `backend`, `frontend` y `scripts`):
+1. Descomprime el ZIP y abre la carpeta `CyberLens` en VS Code.
+2. Abre PowerShell en esa carpeta y ejecuta una sola vez:
 
 ```powershell
 Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 .\scripts\install_windows.ps1
-.\scripts\check_windows.ps1
+```
+
+3. Para arrancar las dos aplicaciones:
+
+```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 .\scripts\run_dev_windows.ps1
 ```
 
-Los scripts `install_windows.ps1` y `check_windows.ps1` **regresan a la carpeta desde donde se lanzaron**. Si llegas a quedar en `frontend`, ejecuta `cd ..` antes de invocar `scripts`, o ejecuta `..\scripts\check_windows.ps1` directamente.
+4. Abre **http://localhost:3000** (usa *localhost*, no 127.0.0.1, para evitar diferencias de cookies si mantienes la configuración predeterminada).
 
-Interfaz: http://localhost:3000 — API: http://localhost:8000 — Swagger: http://localhost:8000/docs — salud: http://localhost:8000/health — ML: http://localhost:8000/api/ml/status
+Otros enlaces: API http://localhost:8000, Swagger http://localhost:8000/docs y prueba de salud http://localhost:8000/health.
 
-El sistema funciona en **modo heurístico** aunque no hayas entrenado ML; en ese caso aparece *SIN ENTRENAR* y `"trained": false`.
+### Ejecución manual (si prefieres dos terminales)
 
-### Entrenar ML con datasets propios (opción preferida)
-
-Prepara **dos archivos locales** TXT (una URL por línea) o CSV (con encabezado `url`): uno con URLs de phishing **etiquetadas y verificadas** y otro con URLs candidatas legítimas que puedas justificar. No abras las URLs peligrosas para comprobarlas; usa datasets de origen confiable.
+En la primera terminal, desde `backend`:
 
 ```powershell
-.\scripts\train_ml_windows.ps1 -PhishingCsv "C:\datos\phishing.csv" -LegitimateCsv "C:\datos\legitimas.csv"
+.\.venv\Scripts\python.exe -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
-Se requieren al menos 20 URLs válidas y 12 grupos de dominio distintos por clase. Puedes usar `-MaxPerClass 800` (hasta 10.000). Los archivos y modelos permanecen locales y nunca se suben automáticamente a servicios externos. El entrenamiento guarda:
-
-- `backend/models/cyberlens_ml.joblib` — modelo seleccionado + metadatos; **cárgalo solo si fue generado localmente por CyberLens**. Los archivos `joblib` de terceros no son seguros de deserializar.
-- `backend/models/cyberlens_ml.metrics.json` — comparación de modelos y test final; no contiene URLs de ejemplo.
-
-**No compartas los datos originales** ni distribuyas modelos entrenados sobre fuentes sujetas a restricciones de licencia.
-
-### Obtención opcional de feeds académicos
-
-Para una **prueba de investigación educativa no comercial**, existe un comando optativo que descarga exclusivamente los feeds **OpenPhish Community** (muestras reportadas como phishing) y **Tranco** (dominios populares usados como *proxy* de candidatos legítimos). **No visita ninguna URL de la lista**:
+En la segunda, desde `frontend`:
 
 ```powershell
-.\scripts\train_ml_windows.ps1 -AcademicFeeds -AcceptAcademicTerms
+npm run dev
 ```
 
-Solo ejecútalo tras revisar y aceptar las condiciones de cada fuente:
+## Configuración opcional
 
-- OpenPhish: https://openphish.com/terms.html y https://openphish.com/phishing_feeds.html. Uso académico/personal no comercial; **prohíbe redistribuir los datos** sin autorización, y sus términos pueden imponer restricciones a productos derivados. https://openphish.com/academic_use.html para el programa académico.
-- Tranco: https://tranco-list.eu/ y https://tranco-list.eu/methodology.
-- Alternativa: PhishTank publica feeds verificados, pero para descargas automatizadas recomienda **clave de aplicación** y `User-Agent` descriptivo: https://www.phishtank.org/developer_info.php. Este script **no** descarga PhishTank automáticamente.
+Copia `backend/.env.example` a `backend/.env` para personalizar variables. El archivo **no** está incluido en Git.
 
-**Limitación metodológica fundamental:** el conjunto *phishing de un feed activo vs portadas de dominios Tranco* tiene sesgo fuerte. Por ejemplo, un modelo podría aprender que tener ruta larga significa phishing, cuando multitud de sitios legítimos también tienen rutas largas. Por ello, sus métricas **no se pueden extrapolar a Internet real**, aunque el test esté separado por dominio. No utilizar el modelo para bloquear navegación ni afirmar exactitud general.
+| Variable | Uso | Predeterminada |
+|---|---|---|
+| `DATABASE_URL` | SQLite, relativa al directorio de ejecución o con ruta absoluta | `sqlite:///.../backend/cyberlens.db` |
+| `ALLOWED_ORIGINS` | Orígenes frontend aceptados por CORS, separados por comas | `http://localhost:3000,http://127.0.0.1:3000` |
+| `COOKIE_SECURE` | `true` obliga a cookies solo bajo HTTPS | `false` para localhost |
+| `HISTORY_RETENTION_DAYS` | Caducidad de registros; limpieza al analizar/consultar historial | `30` |
+| `NEXT_PUBLIC_API_URL` | URL de la API para el navegador (en `frontend/.env.local`) | `http://localhost:8000` |
 
-El script requiere conexión a Internet para descargar **solo los feeds**. Si falla por acceso, licencia o cambios en endpoints, utiliza archivos CSV locales. No uses reintentos agresivos para esquivar límites de proveedor.
+**No habilites `COOKIE_SECURE=true` si pruebas por HTTP local**; se necesita HTTPS. Para un despliegue exterior, HTTPS y cookie segura son obligatorios, pero por sí solos no convierten a V0.2.1 en una aplicación lista para producción.
 
-### Qué ver después del entrenamiento
+## Qué cambió de V0.2 a V0.2.1
 
-En el navegador, vuelve a analizar una URL y aparecerá la sección **Machine Learning experimental** con estimación de la clase phishing, modelo y aviso de incertidumbre. El **puntaje heurístico 0–100 NO se modifica ni se combina** con esa estimación hasta que calibremos modelos sobre datos reales en V0.4. La API carga un modelo local actualizado automáticamente al cambiar su archivo.
+1. El motor ya no confunde IPv4/IPv6 con subdominios. Las señales de IP y credenciales tienen un peso suficiente para producir al menos MEDIO cuando aparecen solas.
+2. Se añaden **reglas experimentales y limitadas** para ciertos nombres de marcas y sustituciones obvias (ejemplo `g00gle`). No certifican suplantación ni sustituyen consultas de reputación.
+3. El servidor procesa la URL completa solo durante el análisis en memoria; en el **resultado HTTP y la base de datos** conserva únicamente el esquema/dominio/puerto y una indicación de contenido omitido. No persiste usuario, contraseña, ruta, parámetros, fragmento ni token de sesión en claro.
+4. El historial ahora se aísla mediante una cookie aleatoria `HttpOnly`, `SameSite=Lax`. La base de datos conserva solo el hash SHA-256 del token de sesión. Dos navegadores distintos no ven los análisis del otro.
+5. Nuevo endpoint `DELETE /api/history` y botón «Borrar mis análisis».
+6. Entradas no válidas devuelven un mensaje limpio (422), sin repetir los datos originales del formulario.
+7. `DATABASE_URL`, CORS, cookie segura y retención ya son configurables. Se agregan cabeceras `no-store` y `nosniff`.
+8. Dependencias de frontend actualizadas a versiones corregidas de seguridad, manteniendo Next.js 15.
+9. Suite ampliada de **5 a 25 casos**, incluyendo pruebas API, migración de BD, cookies y privacidad.
 
-Los análisis guardan exclusivamente origen y metadatos sanitizados. Para no introducir rupturas, se añadió `ml_result_json` de manera compatible con SQLite anterior.
+## Migración de datos desde V0.2
 
-## Pruebas y verificación
+Si tienes una base `backend/cyberlens.db` creada por V0.2, **haz una copia local antes de cambiar de versión**. La primera ejecución actualiza el esquema y **anonimiza las URLs antiguas** (solo conserva el origen y una marca del contenido omitido). Por privacidad, estos registros anteriores quedan **fuera de los historiales nuevos** y no pueden vincularse automáticamente a un navegador. Los nuevos análisis sí aparecerán en el historial de ese navegador. Si quieres eliminar por completo rastros históricos, elimina la base anterior y deja que se cree una nueva (después de conservar solo lo que estés autorizado a guardar).
+
+## Pruebas
+
+Desde la carpeta `backend`, con Python y dependencias instaladas:
 
 ```powershell
-.\scripts\check_windows.ps1
+.\.venv\Scripts\python.exe -m unittest discover -s tests -v
 ```
 
-Puedes probar manualmente `https://example.com/` y `https://g00gle.example.com/login` como casos orientativos. Para una prueba de URL anidada usa un **destino ficticio**:
+Si usas la terminal del entorno donde ejecutas Python directamente:
 
-```text
-https://redirector.example.org/r?next=https%3A%2F%2Fotra.example.net%2Flogin
+```bash
+cd backend
+python -m unittest discover -s tests -v
 ```
 
-El extractor ML marca una *posible URL externa codificada* sin seguirla. El heurístico V0.2.1 todavía no tiene reglas completas de redirección, y sin entrenamiento el ML no clasificará esa señal. Rechazar una cadena pegada de Reddit con Markdown, espacios o `http\://` es **correcto**; esa prueba evalúa el validador, no la detección real de phishing. La cadena reportada en el caso Reddit no debe abrirse en tu navegador.
+Antes de entregar, ejecuta además **`.\scripts\check_windows.ps1`** desde la raíz: valida las pruebas del backend y la compilación real del frontend.
 
-## Diseño de ML y limitaciones de evaluación
+Prueba manual: analiza `https://example.com/` (BAJO), `https://g00gle.com/` (MEDIO) y una URL ficticia con ruta/parámetros. Abre una ventana incógnito: el historial debe empezar vacío. Prueba después el botón «Borrar mis análisis».
 
-1. Extrae características de las URLs como texto. Nunca solicita el destino ni ejecuta HTML/JS.
-2. Descarta duplicados y grupos de dominio que aparecen en ambas clases.
-3. Separa grupos aproximadamente por dominio registrable (reglas simplificadas; sustituir por Public Suffix List completa si se necesita rigor académico mayor).
-4. Separa conjuntos `train`, `validation` y `test` usando grupos disjuntos. Compara Regresión Logística y Random Forest sobre `validation` y reentrena el ganador en `train+validation`.
-5. Evalúa **una única vez** sobre `test` e informa **precision**, **recall**, **F1** y `TN/FP/FN/TP`. Calcula el mismo conjunto test para la heurística (umbral de precaución ≥25).
-6. El modelo generado no está calibrado para probabilidades fiables y las clases pueden estar sesgadas. La evaluación externa, temporal, robustez, falsos negativos y ensayos de usabilidad quedan para V0.4.
+## API
 
-El reportado *accuracy* sobre ejemplos ficticios no es evidencia de desempeño de ciberseguridad. Solo se incluirán métricas verdaderas del dataset que tú entrenes, con fecha y procedencia.
+- `GET /health`: estado de la API.
+- `POST /api/analyze`: cuerpo JSON `{ "url": "https://example.com/login" }`; devuelve URL redactada, puntaje, nivel, indicadores y mensaje. Establece cookie de sesión en el navegador.
+- `GET /api/history?limit=10`: historial de esa cookie, máximo 50 registros, no público/global.
+- `DELETE /api/history`: elimina solo los registros de esa cookie.
 
-## Seguridad y configuración
+El frontend utiliza `credentials: 'include'` para conservar la sesión entre peticiones. Se recomienda **no** usar Swagger como única prueba de historial, porque las cookies de Swagger y las del frontend pueden comportarse como sesiones diferentes.
 
-- `backend/.env.example` configura SQLite, CORS, cookies y retención; no publiques un `.env` real.
-- `frontend/.env.local` puede configurar `NEXT_PUBLIC_API_URL` (por defecto `http://localhost:8000`).
-- Las cookies del historial son `HttpOnly; SameSite=Lax`; no constituyen autenticación empresarial.
-- El modelo se almacena localmente en carpeta ignorada por Git; no cargues `.joblib` desconocidos.
-- Ejecuta `cd frontend; npm audit` para investigar las dos advertencias de dependencias vistas en Windows; **no** uses `npm audit fix --force` sin revisar cambios. Es una tarea de V0.4 antes de despliegue.
-- No habilites acceso público ni envíes URLs reales con tokens a servicios externos. No hay DNS, TLS, reputación, crawling ni detección de redirecciones efectivas.
+## Limitaciones conocidas y siguientes entregas
 
-## Historial y migraciones
+- No existe aún dataset etiquetado ni medición real de precision, recall, F1 o falsos positivos. Los pesos son **heurísticos, no probabilidades calibradas**.
+- El conjunto de marcas es reducido; puede alertar sobre dominios legítimos, por ejemplo sitios de terceros que mencionan una marca.
+- No existe aún ML, DNS, TLS, reputación externa, análisis de correos, autenticación persistente ni despliegue público protegido.
+- La cookie ofrece aislamiento de historiales en un **prototipo local**, no un sistema de cuentas y permisos empresariales. Si se publica, será necesario añadir autenticación, protección contra abuso, despliegue HTTPS, monitoreo, pruebas de seguridad y políticas de datos.
+- El frontend **no pudo compilarse en el entorno de preparación** porque no había acceso al registro npm para descargar los paquetes. El backend se ejecutó y pasó 25 pruebas. Ejecuta `npm install` y `npm run build` en tu Windows con conexión a Internet antes de considerarlo validado.
 
-Antes de cambiar una instalación existente, respalda `backend/cyberlens.db` (si tienes datos que debas conservar). La migración agrega la columna opcional `ml_result_json`, conserva el historial que ya pertenece a tu navegador y mantiene el saneamiento de URLs. La cookie de sesión no identifica usuarios entre equipos o instalaciones.
+Consulta `docs/avance_v0.2.1.md` para los cambios verificados y `docs/roadmap.md` para las próximas etapas.
 
-## Archivos importantes
 
-- `backend/app/analyzer/url_analyzer.py`: heurísticas de V0.2.1.
-- `backend/app/ml/features.py`: características de la URL (25 valores).
-- `backend/ml_scripts/train.py`: entrenamiento, separación agrupada, comparación y métricas.
-- `backend/app/ml/model.py`: inferencia opcional desde modelo local confiable.
-- `backend/app/api/routes.py`: API, historial y ML.
-- `frontend/app/page.tsx`: interfaz con bloque ML experimental.
-- `backend/tests/test_ml.py`: pruebas de entrenamiento e inferencia con datos sintéticos exclusivamente para comprobar ingeniería.
-- `docs/roadmap.md`: próximas etapas de validación y entrega.
+## caso caja negra (link del reddit)
 
-**CyberLens V0.3 es un prototipo académico con ML implementado en código, NO un detector comercial validado.**
+https://www.reddit.com/r/sysadmin/comments/d9ndnf/heres_a_phishing_url_to_give_you_nightmares/?solution=8cc6324d1f8ebb408cc6324d1f8ebb40&js_challenge=1&jsc_token=2824be10929bdc604753c70a67a1c3312b5feb76663bab9c236038861f1beb7e&jsc_orig_r=&_x_tr_sl=en&_x_tr_tl=es&_x_tr_hl=es&_x_tr_pto=tc
