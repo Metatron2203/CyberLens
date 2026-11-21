@@ -7,6 +7,8 @@ import ipaddress
 import re
 from urllib.parse import parse_qsl, unquote, urlparse
 
+from app.analyzer.redirect_analysis import inspect_redirect_parameters
+
 SUSPICIOUS_TERMS = {
     "login", "verify", "verification", "secure", "account", "update",
     "password", "signin", "confirm", "wallet", "recover", "unlock",
@@ -86,6 +88,8 @@ def analyze_url(url: str) -> dict:
     if not hostname:
         raise ValueError("La URL no contiene un dominio válido.")
 
+    redirect_signals = inspect_redirect_parameters(url)
+
     indicators: list[dict] = []
     score = 0
 
@@ -152,6 +156,13 @@ def analyze_url(url: str) -> dict:
     elif found_other:
         add("Términos sensibles en la URL", "La ruta o consulta contienen términos asociados a acceso, pagos o verificación: " + ", ".join(found_other), 7, "low")
 
+    # Advertencias informativas: sin pesos calibrados con datos reales.
+    # Mostrar estas señales NO implica haber seguido una redirección.
+    if redirect_signals.embedded_url:
+        add("URL anidada en parámetro", "Un parámetro habitual de redirección contiene otra URL HTTP/HTTPS. No se ha visitado el destino.", 0, "low")
+    if redirect_signals.external_host:
+        add("Destino en otro host", "La URL anidada apunta fuera del host inicial y sus subdominios. Esto también puede ocurrir en sitios legítimos.", 0, "medium")
+
     # Regla de alerta adicional; las marcas se usan como patrones ilustrativos.
     # Se excluyen dominios reconocidos de cada marca y sus subdominios.
     if not is_ip:
@@ -181,6 +192,9 @@ def analyze_url(url: str) -> dict:
     else:
         level = "high"
         message = "Se detectó una combinación relevante de señales; evita introducir datos hasta verificar el destino."
+
+    if redirect_signals.external_host:
+        message += " Se observó una posible redirección hacia otro host sin visitar el destino; verifica el enlace antes de continuar."
 
     return {
         "url": safe_url_for_storage(url),
