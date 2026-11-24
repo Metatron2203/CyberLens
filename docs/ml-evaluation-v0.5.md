@@ -126,3 +126,71 @@ No demuestra la capacidad de identificar ataques nuevos.
 La evaluación externa y/o temporal sigue pendiente. Se necesita un conjunto
 independiente, con fechas/procedencia y permisos documentados, no reutilizado
 para entrenar ni ajustar umbrales. No escoger el umbral usando el test final.
+
+
+## Fase 3 — evaluación externa y URLs complejas
+
+**Estado:** implementada la herramienta; falta un corpus externo real y etiquetado.
+Se añade `backend/ml_scripts/external_eval.py`, ejecutable desde `backend`.
+
+### A. Diagnóstico de ingeniería con URLs ficticias (sin descargar datos)
+
+    .\.venv\Scripts\python.exe -m ml_scripts.external_eval --demo-synthetic
+
+Utiliza 18 ejemplos con dominios reservados `.example`: páginas ficticias de
+inicio de sesión, parámetros, redirecciones, y supuestos ataques ficticios.
+Compara el modelo local con la heurística y desglosa los resultados por
+categoría. **Es una prueba de estrés didáctica, NO una evaluación externa
+de calidad real del modelo.** No requiere huellas del modelo antiguo y no
+toca URLs en Internet.
+
+Guarda exclusivamente recuentos y métricas agregadas en
+`backend/models/external_eval.metrics.json` (ignorados por Git).
+El informe no incluye URLs originales ni ejemplos de falsos negativos.
+
+### B. Evaluación externa con datos reales y etiquetas auditadas
+
+El CSV local debe tener columnas `url,label,category`. Etiquetas: `0` o
+`legitimate` (candidata legítima validada documentalmente); `1` o
+`phishing`. Categorías permitidas: `login`, `query`, `redirect`, `other`.
+Una fuente externa válida debe registrar fecha, definición de etiqueta,
+procedencia, permisos y relación temporal con el entrenamiento. **No
+visitar URLs peligrosas para verificar sus etiquetas.** Las URL legítimas
+complejas deben provenir de fuentes documentadas; no se debe asumir que
+una URL es segura por estar en Tranco. No reutilizar datos para ajustar
+el modelo después de ver las métricas finales.
+
+Ejemplo de ejecución con un CSV local preparado (NO incluido en Git):
+
+    .\.venv\Scripts\python.exe -m ml_scripts.external_eval --csv data/external.csv --source "Corpus externo auditado"
+
+El script:
+1. Extrae características sin acceder a hosts.
+2. Exige que el modelo haya guardado huellas SHA-256 del **corpus
+   original completo** (incluyendo train, validación y test).
+3. Compara grupos aproximados de dominio y **rechaza todo el lote** si
+   detecta cualquiera compartido; no filtra muestras silenciosamente.
+4. Emite métricas agregadas globales, de la heurística y por categoría.
+   Nunca imprime URLs individuales ni tokens.
+
+**Limitación crucial:** el modelo entrenado antes de esta fase **no incluye
+esas huellas**. El CSV externo será rechazado por seguridad metodológica.
+Primero debes entrenar un modelo nuevo con la versión actualizada de
+`ml_scripts.train` y un dataset cuyos términos de uso hayas revisado.
+
+Antes de reemplazar un modelo local, guarda una copia **privada** de tus
+métricas y del modelo original si necesitas reproducir ese experimento.
+El formato `.joblib` deserializa código: jamás cargues uno ajeno o dudoso.
+Las huellas SHA-256 en el modelo **no son anonimización perfecta**:
+el modelo nunca debe distribuirse como archivo público y las URLs
+tampoco deben subirse a GitHub.
+
+### C. Qué todavía no demuestra la fase 3
+
+- Los 18 ejemplos inventados no acreditan rendimiento en sitios reales.
+- Un CSV externo solo es válido si sus etiquetas, procedencia y fechas
+  son independientes y confiables. La revisión es responsabilidad humana.
+- El agrupamiento de dominios es aproximado (no hay lista PSL completa);
+  puede no identificar campañas compartidas entre múltiples dominios.
+- Los intervalos Wilson no corrigen sesgo de fuente, de campaña o temporal.
+- El puntaje heurístico no es una probabilidad y el ML no está calibrado.
