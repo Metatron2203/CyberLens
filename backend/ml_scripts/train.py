@@ -228,6 +228,9 @@ def train_models(items, *, seed=42, source="CSV etiquetados localmente", model_p
         "created_utc": created,
         "model_name": winner,
         "model": model,
+        # Solo en el archivo local .joblib: SHA-256 de TODOS los grupos del corpus,
+        # incluido el test original. No publicar: hash no equivale a anonimato.
+        "dataset_group_fingerprints": sorted(str(item) for item in set(groups)),
         "validation_metrics": validations,
         "test_metrics": test_metrics,
         "baseline_metrics": baseline,
@@ -239,7 +242,9 @@ def train_models(items, *, seed=42, source="CSV etiquetados localmente", model_p
     path = Path(model_path or OUTPUT_DIR / "cyberlens_ml.joblib")
     path.parent.mkdir(parents=True, exist_ok=True)
     joblib.dump(result, path)
-    report = {key: val for key, val in result.items() if key != "model" and key != "feature_names"}
+    report = {key: val for key, val in result.items()
+              if key not in {"model", "feature_names", "dataset_group_fingerprints"}}
+    report["external_evaluation_ready"] = True
     report["feature_names"] = list(FEATURE_NAMES)
     report["methodology"] = "División por grupos de dominio (aproximación), entrenamiento/validación/test sin superposición, selección sobre validación y una sola evaluación final en test. No se usaron URLs de test para entrenar."
     report_path = path.with_suffix(".metrics.json")
