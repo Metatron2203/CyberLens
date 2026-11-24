@@ -194,3 +194,70 @@ tampoco deben subirse a GitHub.
   puede no identificar campañas compartidas entre múltiples dominios.
 - Los intervalos Wilson no corrigen sesgo de fuente, de campaña o temporal.
 - El puntaje heurístico no es una probabilidad y el ML no está calibrado.
+
+## Preparación PhiUSIIL UCI 2024 (fase 3B)
+
+Fuente: https://archive.ics.uci.edu/dataset/967/phiusiil+phishing+url+dataset
+(Prasad y Chandra, 2024; licencia CC BY 4.0).
+Archivo local original en `backend/data/PhiUSIIL_Phishing_URL_Dataset.csv`.
+
+**Nunca se usa PhiUSIIL para entrenar el modelo que se probará con
+PhiUSIIL.** La evaluación debe ser independiente de selección de modelo,
+ajustes de hiperparámetros y umbrales. El dataset de 2024 es anterior al
+entrenamiento de feeds de 2026; no puede presentarse como prueba temporal
+futura. Su etiqueta representa la anotación del dataset y no es una
+verificación actual del contenido del sitio.
+
+La convención de etiquetas se invierte obligatoriamente:
+- UCI: 1 = legítima -> CyberLens 0
+- UCI: 0 = phishing -> CyberLens 1
+
+La muestra se extrae localmente con una semilla fija (2026),
+sin navegar ni descargar URLs. Selección aleatoria por clase y grupo
+aproximado de dominio, como máximo una URL por grupo. Se descartan
+grupos ambiguos con ambas etiquetas y grupos compartidos con el
+corpus del entrenamiento anterior. La selección **no consulta**
+las predicciones para incluir o excluir filas.
+
+### Comandos en PowerShell (desde backend)
+
+**1. Antes de cualquier reentrenamiento, respaldar el modelo y JSON:**
+
+    $fecha = Get-Date -Format "yyyyMMdd-HHmmss"
+    New-Item -ItemType Directory -Force "models\backup" | Out-Null
+    Copy-Item "models\cyberlens_ml.joblib" "models\backup\cyberlens_ml-$fecha.joblib"
+    Copy-Item "models\cyberlens_ml.metrics.json" "models\backup\cyberlens_ml-$fecha.metrics.json"
+
+**2. Ejecutar pruebas y entrenar un modelo nuevo con el mismo tipo de
+fuentes anteriores (OpenPhish/Tranco), solo tras revisar sus términos:**
+
+    .\.venv\Scripts\python.exe -m unittest discover -s tests -q
+    .\.venv\Scripts\python.exe -m ml_scripts.train --academic-feeds --accept-academic-terms --max-per-class 300
+
+El modelo resultante guarda `dataset_group_fingerprints` solo dentro
+del `.joblib` local; esas huellas no aparecen en el reporte JSON ni
+se deben publicar (los hashes no son anonimización completa).
+
+**3. Preparar la muestra de PhiUSIIL por fuera de entrenamiento:**
+
+    .\.venv\Scripts\python.exe -m ml_scripts.prepare_phiusiil --per-class 250
+
+Produce `backend/data/phiusiil_external.csv` con
+`url,label,category`. No sobrescribe archivos existentes:
+si se repite el proceso, respalda o renombra el anterior primero.
+
+**4. Evaluar sin visitar los sitios:**
+
+    .\.venv\Scripts\python.exe -m ml_scripts.external_eval --csv data/phiusiil_external.csv --source "PhiUSIIL UCI 2024 independiente"
+
+Produce `backend/models/external_eval.metrics.json`.
+Revisar `model_metrics`, `heuristic_baseline_metrics`, matriz de
+confusión, falsos negativos y categorías. Si detecta grupos de dominio
+reutilizados, el evaluador aborta.
+
+**Condición para un informe académico honesto:** PhiUSIIL tiene muchas
+URLs etiquetadas, pero eso no significa que los sitios sigan activos
+ni que las etiquetas se puedan verificar visitándolos. No abrir URLs
+maliciosas ni tratar 250 ejemplos por clase como evidencia de Internet
+completo. Reportar siempre licencia, año, extracción, versión del modelo,
+definición de clases y sesgos entre corpus.
