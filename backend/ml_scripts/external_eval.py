@@ -13,7 +13,6 @@ Uso desde backend:
 import argparse
 import csv
 import json
-from collections import Counter
 from pathlib import Path
 
 from app.analyzer.url_analyzer import analyze_url
@@ -149,7 +148,7 @@ def evaluate_cases(cases, bundle: dict, *, source: str, strict: bool) -> dict:
     }
     if not strict:
         result["limitations"].insert(
-            0, "Datos .example inventados, nunca utilizar estas métricas para afirmar eficacia real."
+            0, "Muestras ficticias .example; nunca utilizar estas métricas para afirmar eficacia real."
         )
     return result
 
