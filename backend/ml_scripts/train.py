@@ -12,6 +12,7 @@ import csv
 import hashlib
 import io
 import json
+from math import sqrt
 import random
 import urllib.request
 from collections import Counter
@@ -120,14 +121,54 @@ def prepare(phishing: list[str], legitimate: list[str], limit: int = 10000):
     return filtered, len(conflict)
 
 
+def wilson_interval(successes: int, total: int) -> dict[str, float] | None:
+    """Intervalo aproximado de Wilson al 95 %, por observaciones.
+
+    No considera dependencia entre muestras ni errores de etiquetado;
+    es optimista cuando existen URLs correlacionadas por campañas o fuentes.
+    """
+    if total < 0 or successes < 0 or successes > total:
+        raise ValueError("Recuentos inválidos para el intervalo de Wilson")
+    if total == 0:
+        return None
+    z = 1.959963984540054
+    p = successes / total
+    denom = 1.0 + z * z / total
+    center = (p + z * z / (2.0 * total)) / denom
+    margin = (z / denom) * sqrt(p * (1.0 - p) / total + z * z / (4.0 * total * total))
+    return {"lower": round(max(0.0, center - margin), 4),
+            "upper": round(min(1.0, center + margin), 4)}
+
+
 def scores(y_true, y_pred) -> dict:
     from sklearn.metrics import confusion_matrix, f1_score, precision_score, recall_score
     tn, fp, fn, tp = (int(v) for v in confusion_matrix(y_true, y_pred, labels=[0, 1]).ravel())
+    positive_count = tp + fn
+    negative_count = tn + fp
+    predicted_positive = tp + fp
+    tpr = tp / positive_count if positive_count else None
+    tnr = tn / negative_count if negative_count else None
     return {
         "precision": round(float(precision_score(y_true, y_pred, zero_division=0)), 4),
         "recall": round(float(recall_score(y_true, y_pred, zero_division=0)), 4),
         "f1": round(float(f1_score(y_true, y_pred, zero_division=0)), 4),
         "confusion_matrix": {"tn": tn, "fp": fp, "fn": fn, "tp": tp},
+        "support": {
+            "total": positive_count + negative_count,
+            "phishing": positive_count,
+            "candidate_legitimate": negative_count,
+            "predicted_phishing": predicted_positive,
+        },
+        "error_rates": {
+            "false_negative_rate": round(fn / positive_count, 4) if positive_count else None,
+            "false_positive_rate": round(fp / negative_count, 4) if negative_count else None,
+            "balanced_accuracy": round((tpr + tnr) / 2, 4) if tpr is not None and tnr is not None else None,
+        },
+        "confidence_intervals_95_wilson": {
+            "recall": wilson_interval(tp, positive_count),
+            "precision": wilson_interval(tp, predicted_positive),
+            "false_positive_rate": wilson_interval(fp, negative_count),
+        },
     }
 
 
@@ -234,6 +275,7 @@ def main(argv=None):
         legitimate_input_count=len(legitimate),
         conflicting_domain_groups=conflicts,
         source=source,
+        feature_names=FEATURE_NAMES,
     )
     report, path = train_models(items, source=source, audit=audit)
     print("Modelos comparados:")
@@ -241,6 +283,7 @@ def main(argv=None):
         print(f"  {name}: precision={metrics['precision']:.3f} recall={metrics['recall']:.3f} F1={metrics['f1']:.3f} (validación)")
     print(f"Modelo elegido: {report['model_name']}")
     print(f"Prueba independiente: {report['test_metrics']}")
+    print("Intervalos de Wilson 95 %: describen incertidumbre muestral aproximada; NO corrigen sesgo ni correlaciones por dominio.")
     print(f"Heurística en el mismo test: {report['baseline_metrics']}")
     print(f"Grupos conflictivos descartados: {conflicts}")
     print(f"Auditoría de datos: {audit['accepted_counts']}")
