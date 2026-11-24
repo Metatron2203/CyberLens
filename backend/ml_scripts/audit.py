@@ -7,6 +7,33 @@ los archivos utilizados; NO miden exactitud de phishing en Internet.
 from collections import Counter
 
 
+def feature_bias_profile(items: list[tuple], feature_names) -> dict:
+    """Resume características seleccionadas por clase, sin URLs individuales.
+
+    Una diferencia marcada puede ser sesgo de procedencia, NO prueba de phishing.
+    """
+    indices = {str(name): i for i, name in enumerate(feature_names)}
+    selected = (
+        "uses_http", "url_length", "path_depth",
+        "query_parameter_count", "sensitive_path_terms",
+        "redirect_named_parameter", "external_embedded_host",
+    )
+    result = {}
+    for name in selected:
+        if name not in indices:
+            continue
+        idx = indices[name]
+        positive = [float(item[0][idx]) for item in items if int(item[1]) == 1]
+        negative = [float(item[0][idx]) for item in items if int(item[1]) == 0]
+        if not positive or not negative:
+            continue
+        result[name] = {
+            "phishing_mean": round(sum(positive) / len(positive), 4),
+            "candidate_legitimate_mean": round(sum(negative) / len(negative), 4),
+        }
+    return result
+
+
 def dataset_audit(
     items: list[tuple],
     *,
@@ -14,6 +41,7 @@ def dataset_audit(
     legitimate_input_count: int,
     conflicting_domain_groups: int,
     source: str,
+    feature_names=None,
 ) -> dict:
     """Resume cantidad, balance y posibles sesgos, sin divulgar muestras.
 
@@ -61,6 +89,22 @@ def dataset_audit(
             "Se descartaron grupos con etiquetas contradictorias; revisar calidad de etiquetado."
         )
 
+    profile = feature_bias_profile(items, feature_names) if feature_names is not None else {}
+    http_stats = profile.get("uses_http")
+    if http_stats and abs(
+        http_stats["phishing_mean"] - http_stats["candidate_legitimate_mean"]
+    ) >= 0.5:
+        warnings.append(
+            "El uso de HTTP difiere mucho entre las clases; posible sesgo de origen del dataset."
+        )
+    depth_stats = profile.get("path_depth")
+    if depth_stats and abs(
+        depth_stats["phishing_mean"] - depth_stats["candidate_legitimate_mean"]
+    ) >= 2:
+        warnings.append(
+            "La profundidad de ruta difiere mucho entre las clases; comparar con URLs legítimas más variadas."
+        )
+
     return {
         "source_description": source,
         "input_counts": {
@@ -81,6 +125,7 @@ def dataset_audit(
             "candidate_legitimate": len(groups_legitimate),
         },
         "conflicting_domain_groups": conflicting_domain_groups,
+        "feature_profile_by_class": profile,
         "warnings": warnings,
         "limitations": (
             "Auditoría de estructura y procedencia, no validación de etiquetas. "
