@@ -148,6 +148,27 @@ verificar ausencia de grupos superpuestos. No uses los datos de la
 evaluación externa para entrenar o elegir umbrales. Consulta
 [`docs/ml-evaluation-v0.5.md`](docs/ml-evaluation-v0.5.md).
 
+### PhiUSIIL: preparación del primer corpus externo
+
+Si descargaste `backend/data/PhiUSIIL_Phishing_URL_Dataset.csv` de UCI,
+puedes preparar una muestra equilibrada de hasta 250 URLs por clase
+sin visitar los sitios ni publicar URLs originales. **UCI codifica
+`1=legítima, 0=phishing`; CyberLens invierte esas etiquetas.**
+
+Antes de evaluar un CSV real, es obligatorio reentrenar el modelo
+con el código reciente para registrar los grupos de dominios de
+entrenamiento y prueba original. Respalda tu modelo actual antes.
+
+```powershell
+cd backend
+.\.venv\Scripts\python.exe -m ml_scripts.prepare_phiusiil --per-class 250
+.\.venv\Scripts\python.exe -m ml_scripts.external_eval --csv data/phiusiil_external.csv --source "PhiUSIIL UCI 2024 independiente"
+```
+
+**No utilices el corpus de PhiUSIIL para entrenar este mismo modelo**.
+Los comandos completos de copia de seguridad, pruebas y reentrenamiento
+están en [`docs/ml-evaluation-v0.5.md`](docs/ml-evaluation-v0.5.md).
+
 ## Diseño de ML y limitaciones de evaluación
 
 1. Extrae características de las URLs como texto. Nunca solicita el destino ni ejecuta HTML/JS.
