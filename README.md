@@ -99,6 +99,18 @@ https://redirector.example.org/r?next=https%3A%2F%2Fotra.example.net%2Flogin
 
 En V0.4 el motor heurístico muestra `URL anidada en parámetro` y `Destino en otro host` como indicadores informativos **sin puntos adicionales**. Con el ejemplo ficticio anterior se espera **7/100, BAJO** por el término `login`; **BAJO no garantiza seguridad**. El extractor ML también marca características de redirección, pero sin un modelo entrenado no ofrece una predicción ML. Se inspecciona el texto, **no** se verifica un salto de redirección real. Rechazar una cadena pegada de Reddit con Markdown, espacios o `http\://` es **correcto**; esa prueba evalúa el validador, no la detección real de phishing. La cadena reportada en el caso Reddit no debe abrirse en tu navegador.
 
+## V0.5 en desarrollo: auditoría de datasets
+
+La rama `feature/ml-dataset-audit-v0.5` introduce un reporte agregado de calidad
+de datos (recuentos de entradas, muestras aceptadas y excluidas, grupos de dominio,
+balance de clases y advertencias de procedencia). No incluye ni publica las URLs
+de entrenamiento. El resultado se incorpora a `cyberlens_ml.metrics.json` como
+`dataset_audit` cuando se ejecuta el script de entrenamiento.
+
+El protocolo de investigación y las advertencias sobre permisos y sesgos están en
+[`docs/ml-evaluation-v0.5.md`](docs/ml-evaluation-v0.5.md). **No hay aún
+métricas verificadas con datos reales ni un modelo entrenado para publicar.**
+
 ## Diseño de ML y limitaciones de evaluación
 
 1. Extrae características de las URLs como texto. Nunca solicita el destino ni ejecuta HTML/JS.
