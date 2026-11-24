@@ -19,6 +19,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from app.analyzer.url_analyzer import analyze_url
+from ml_scripts.audit import dataset_audit
 from app.ml.features import FEATURE_NAMES, FEATURE_SCHEMA, feature_vector, group_key
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
@@ -150,7 +151,7 @@ def grouped_split(X, y, groups, seed):
     return train, val, test
 
 
-def train_models(items, *, seed=42, source="CSV etiquetados localmente", model_path=None):
+def train_models(items, *, seed=42, source="CSV etiquetados localmente", model_path=None, audit=None):
     """Compara dos modelos en validación; evalúa el elegido UNA VEZ en test."""
     import joblib
     import numpy as np
@@ -192,6 +193,8 @@ def train_models(items, *, seed=42, source="CSV etiquetados localmente", model_p
         "samples": {"total": len(y), "phishing": int(sum(y)), "candidate_legitimate": int(sum(1-y)), "train": len(tr), "validation": len(val), "test": len(test), "unique_domains": len(set(groups))},
         "data_notes": f"{source}; evaluar con corpus externo. La clase legítima basada en Tranco NO es verificación de seguridad. Split agrupado aproximado; no implica validez en producción.",
     }
+    if audit is not None:
+        result["dataset_audit"] = audit
     path = Path(model_path or OUTPUT_DIR / "cyberlens_ml.joblib")
     path.parent.mkdir(parents=True, exist_ok=True)
     joblib.dump(result, path)
@@ -225,7 +228,14 @@ def main(argv=None):
         legitimate = read_urls(args.legitimate, args.max_per_class)
         source = "Archivos locales etiquetados por el investigador"
     items, conflicts = prepare(phishing, legitimate, args.max_per_class)
-    report, path = train_models(items, source=source)
+    audit = dataset_audit(
+        items,
+        phishing_input_count=len(phishing),
+        legitimate_input_count=len(legitimate),
+        conflicting_domain_groups=conflicts,
+        source=source,
+    )
+    report, path = train_models(items, source=source, audit=audit)
     print("Modelos comparados:")
     for name, metrics in report["validation_metrics"].items():
         print(f"  {name}: precision={metrics['precision']:.3f} recall={metrics['recall']:.3f} F1={metrics['f1']:.3f} (validación)")
@@ -233,6 +243,9 @@ def main(argv=None):
     print(f"Prueba independiente: {report['test_metrics']}")
     print(f"Heurística en el mismo test: {report['baseline_metrics']}")
     print(f"Grupos conflictivos descartados: {conflicts}")
+    print(f"Auditoría de datos: {audit['accepted_counts']}")
+    for warning in audit["warnings"]:
+        print(f"AVISO DE DATOS: {warning}")
     print(f"Informe: {path.with_suffix('.metrics.json')}")
     print("NOTA: estas métricas describen este dataset; no certifican detección general de phishing.")
 
