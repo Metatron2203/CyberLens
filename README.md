@@ -111,6 +111,22 @@ El protocolo de investigación y las advertencias sobre permisos y sesgos están
 [`docs/ml-evaluation-v0.5.md`](docs/ml-evaluation-v0.5.md). **No hay aún
 métricas verificadas con datos reales ni un modelo entrenado para publicar.**
 
+### Inspeccionar la incertidumbre del primer entrenamiento sin repetir descargas
+
+El experimento local inicial tuvo 390 muestras aceptadas y un test con
+49 TN, 0 FP, 2 FN y 15 TP. Para calcular intervalos aproximados Wilson 95 %
+desde el informe JSON que ya guardaste, ejecuta **desde `backend`**:
+
+```powershell
+.\.venv\Scripts\python.exe -m ml_scripts.inspect_report
+```
+
+Este comando no visita URLs, no descarga datos, no entrena ni modifica el modelo.
+Los nuevos entrenamientos agregan además tasas de error, tamaños de clases y
+un perfil agregado de posibles sesgos de procedencia entre clases.
+Estas mediciones **no** certifican el rendimiento real de CyberLens.
+Consulta [`docs/ml-evaluation-v0.5.md`](docs/ml-evaluation-v0.5.md).
+
 ## Diseño de ML y limitaciones de evaluación
 
 1. Extrae características de las URLs como texto. Nunca solicita el destino ni ejecuta HTML/JS.
