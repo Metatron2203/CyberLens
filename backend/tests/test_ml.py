@@ -61,6 +61,12 @@ class MLTrainingTests(unittest.TestCase):
             report, saved = train_models(items, source="dataset artificial de prueba", model_path=path, audit=audit)
             self.assertTrue(saved.is_file())
             self.assertTrue(path.with_suffix(".metrics.json").is_file())
+            # La lista de grupos es solo local en joblib, no debe estar en el JSON.
+            import joblib
+            bundle = joblib.load(path)
+            self.assertGreater(len(bundle["dataset_group_fingerprints"]), 0)
+            self.assertNotIn("dataset_group_fingerprints", report)
+            self.assertTrue(report["external_evaluation_ready"])
             self.assertEqual(set(report["validation_metrics"]), {"Regresión logística", "Random Forest"})
             self.assertIn("confusion_matrix", report["test_metrics"])
             self.assertEqual(report["samples"]["total"], len(items))
