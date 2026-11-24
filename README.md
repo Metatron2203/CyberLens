@@ -127,6 +127,27 @@ un perfil agregado de posibles sesgos de procedencia entre clases.
 Estas mediciones **no** certifican el rendimiento real de CyberLens.
 Consulta [`docs/ml-evaluation-v0.5.md`](docs/ml-evaluation-v0.5.md).
 
+### V0.5 Fase 3 — evaluación externa y pruebas de URLs complejas
+
+Primero prueba, sin descargas ni abrir URLs, el conjunto **ficticio** de
+18 casos de login, consultas y redirecciones:
+
+```powershell
+cd backend
+.\.venv\Scripts\python.exe -m ml_scripts.external_eval --demo-synthetic
+```
+
+Esta demo **no mide eficacia de phishing real**. Guarda solo métricas
+agregadas en `backend/models/external_eval.metrics.json`.
+
+Una evaluación externa real requiere un CSV etiquetado independiente con
+columnas `url,label,category` (categorías: `login`, `query`, `redirect`,
+`other`). El modelo antiguo carece de huellas de dominios de su corpus,
+por lo que **debe reentrenarse con el código nuevo** antes de poder
+verificar ausencia de grupos superpuestos. No uses los datos de la
+evaluación externa para entrenar o elegir umbrales. Consulta
+[`docs/ml-evaluation-v0.5.md`](docs/ml-evaluation-v0.5.md).
+
 ## Diseño de ML y limitaciones de evaluación
 
 1. Extrae características de las URLs como texto. Nunca solicita el destino ni ejecuta HTML/JS.
