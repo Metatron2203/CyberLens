@@ -93,3 +93,36 @@ generalización temporal ni desempeño en Internet abierto.
 - [ ] Realizar una prueba externa/temporal separada, si los datos lo permiten.
 - [ ] Indicar explícitamente la falta de calibración y sesgos conocidos.
 - [ ] No publicar ni desplegar un modelo hasta revisar permisos y seguridad.
+
+## Fase 2 — incertidumbre y sesgo de fuente
+
+El primer entrenamiento local (con un máximo solicitado de 300 URL por clase)
+informó 390 muestras aceptadas (96 phishing, 294 candidatas legítimas). El test
+contó 49 TN, 0 FP, 2 FN y 15 TP. **Estos resultados son solo del dataset**
+OpenPhish Community + Tranco en esa ejecución; no se publican las URLs.
+
+Antes de descargar feeds nuevos, inspecciona el reporte existente desde backend:
+
+    .\.venv\Scripts\python.exe -m ml_scripts.inspect_report
+
+Este comando **no descarga, no entrena y no modifica modelos**. Calcula
+intervalos aproximados Wilson 95 % de recall y tasa de falsos positivos a
+partir de la matriz de confusión. Un 0/49 de falsos positivos no garantiza una
+tasa real de 0 %. El supuesto de observaciones independientes puede fallar
+para campañas y dominios relacionados; el intervalo no corrige sesgos de
+origen, fechas ni errores de etiquetado.
+
+Los próximos entrenamientos incluyen en el informe JSON:
+- test_metrics.support: tamaño del test por clase y predicciones positivas
+- test_metrics.error_rates: tasa de falsos negativos, falsos positivos y exactitud balanceada
+- test_metrics.confidence_intervals_95_wilson: intervalos aproximados
+- dataset_audit.feature_profile_by_class: medias por clase de rasgos léxicos
+  como HTTP, longitud, profundidad de rutas y parámetros de redirección
+
+Un contraste marcado entre clases puede revelar **sesgo de procedencia**:
+por ejemplo, casi todos los phishing en HTTP frente a portadas Tranco en HTTPS.
+No demuestra la capacidad de identificar ataques nuevos.
+
+La evaluación externa y/o temporal sigue pendiente. Se necesita un conjunto
+independiente, con fechas/procedencia y permisos documentados, no reutilizado
+para entrenar ni ajustar umbrales. No escoger el umbral usando el test final.
