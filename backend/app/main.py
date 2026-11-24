@@ -20,7 +20,7 @@ async def lifespan(_: FastAPI):
 
 app = FastAPI(
     title="CyberLens API",
-    version="0.3.0",
+    version="0.4.0",
     description="Análisis heurístico y ML experimental (sin visitar las URLs).",
     lifespan=lifespan,
 )
@@ -66,4 +66,4 @@ app.include_router(router, prefix="/api")
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "service": "cyberlens-api", "version": "0.3.0"}
+    return {"status": "ok", "service": "cyberlens-api", "version": "0.4.0"}

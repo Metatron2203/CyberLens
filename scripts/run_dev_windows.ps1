@@ -7,4 +7,4 @@ $backendCommand = "Set-Location -LiteralPath '$root\backend'; & '.\.venv\Scripts
 $frontendCommand = "Set-Location -LiteralPath '$root\frontend'; if (Get-Command fnm -ErrorAction SilentlyContinue) { fnm env --use-on-cd --shell powershell | Out-String | Invoke-Expression; fnm use 24 | Out-Null }; npm run dev"
 Start-Process powershell -ArgumentList @("-NoExit", "-Command", $backendCommand)
 Start-Process powershell -ArgumentList @("-NoExit", "-Command", $frontendCommand)
-Write-Host "CyberLens V0.3: http://localhost:3000 | API: http://localhost:8000 | ML: http://localhost:8000/api/ml/status" -ForegroundColor Green
+Write-Host "CyberLens V0.4: http://localhost:3000 | API: http://localhost:8000 | ML: http://localhost:8000/api/ml/status" -ForegroundColor Green
