@@ -7,6 +7,7 @@ from unittest.mock import patch
 from app.ml import model as serving
 from app.ml.features import FEATURE_NAMES, extract_features, feature_vector, group_key
 from ml_scripts.train import grouped_split, prepare, train_models
+from ml_scripts.audit import dataset_audit
 
 
 class MLFeatureTests(unittest.TestCase):
@@ -53,12 +54,18 @@ class MLTrainingTests(unittest.TestCase):
         items = self.fake_items()
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "model.joblib"
-            report, saved = train_models(items, source="dataset artificial de prueba", model_path=path)
+            audit = dataset_audit(
+                items, phishing_input_count=60, legitimate_input_count=60,
+                conflicting_domain_groups=0, source="dataset artificial de prueba",
+            )
+            report, saved = train_models(items, source="dataset artificial de prueba", model_path=path, audit=audit)
             self.assertTrue(saved.is_file())
             self.assertTrue(path.with_suffix(".metrics.json").is_file())
             self.assertEqual(set(report["validation_metrics"]), {"Regresión logística", "Random Forest"})
             self.assertIn("confusion_matrix", report["test_metrics"])
             self.assertEqual(report["samples"]["total"], len(items))
+            self.assertIn("dataset_audit", report)
+            self.assertEqual(report["dataset_audit"]["accepted_counts"]["total"], len(items))
             with patch.object(serving, "MODEL_PATH", path):
                 loaded = serving.status()
                 self.assertTrue(loaded["trained"])
