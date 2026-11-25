@@ -1,4 +1,4 @@
-# CyberLens — heurísticas, redirecciones y ML experimental
+# CyberLens V0.5 — heurísticas, redirecciones y ML experimental
 
 **Proyecto de título, Ingeniería en Informática.** Evalúa características estructurales de una URL para advertir sobre señales asociadas al phishing **sin visitar la dirección**. Conserva el análisis heurístico, el historial aislado por navegador y el módulo ML opcional de V0.3. En V0.4 incorpora señales explicativas sobre URLs anidadas en parámetros de redirección.
 
@@ -123,8 +123,10 @@ Ningún modelo cumple todas las metas experimentales. El consenso deja
 Se conserva el código de investigación y los resultados locales, sin
 promover los modelos ni integrar el consenso en la API. Para el despliegue
 público previsto, no copiar datos ni modelos locales: usar el modo
-heurístico educativo, con advertencias claras. Pendientes build, revisión
- de dependencias y PR #2.
+heurístico educativo, con advertencias claras. Instalación limpia y build
+confirmados en Windows con Next.js 15.5.29 y PostCSS 8.5.23; npm audit
+reportó 0 vulnerabilidades. Pendiente verificación de las etiquetas de
+versión 0.5.0 y fusión del PR #2.
 
 ### Inspeccionar la incertidumbre del primer entrenamiento sin repetir descargas
 
@@ -201,7 +203,7 @@ El reportado *accuracy* sobre ejemplos ficticios no es evidencia de desempeño d
 - `frontend/.env.local` puede configurar `NEXT_PUBLIC_API_URL` (por defecto `http://localhost:8000`).
 - Las cookies del historial son `HttpOnly; SameSite=Lax`; no constituyen autenticación empresarial.
 - El modelo se almacena localmente en carpeta ignorada por Git; no cargues `.joblib` desconocidos.
-- Ejecuta `cd frontend; npm audit` para investigar las dos advertencias de dependencias vistas en Windows; **no** uses `npm audit fix --force` sin revisar cambios. Es una tarea pendiente antes del despliegue.
+- La corrección de PostCSS mediante override de Next.js quedó en el commit `dba1926`. El desarrollador verificó `npm ci`, `npm audit` (0 vulnerabilidades detectadas) y `npm run build` en Windows. No equivale a una auditoría integral; repetir en el entorno de despliegue. **No** uses `npm audit fix --force` sin revisar cambios.
 - No habilites acceso público ni envíes URLs reales con tokens a servicios externos. No hay DNS, TLS, reputación, crawling ni detección de redirecciones efectivas.
 
 ## Historial y migraciones
