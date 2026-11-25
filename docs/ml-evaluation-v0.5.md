@@ -545,3 +545,15 @@ a detección confirmada. La política no se promueve a la API.
 
 Las métricas fueron aportadas por el desarrollador; no se volvieron
 a ejecutar los datos originales en el entorno de revisión.
+
+### Verificación previa a integración
+
+El desarrollador confirmó instalación limpia con npm ci, auditoría npm sin
+vulnerabilidades detectadas y compilación de producción exitosa en Windows
+tras aplicar PostCSS 8.5.23 mediante override (commit dba1926). La advertencia
+sobre scripts de instalación de Tailwind no impidió el build. No se autorizaron
+scripts adicionales. Repetir comprobaciones en Linux antes de desplegar.
+Se sincronizan las etiquetas de versión 0.5.0 de API, prueba de salud y frontend;
+la verificación posterior a ese cambio está pendiente. No se alteran modelos.
+La revisión del diff no mostró archivos de datos, modelos ni bases de datos;
+no constituye una auditoría de secretos o seguridad exhaustiva.
