@@ -489,3 +489,59 @@ Corrección de esquema: el desarrollador confirmó 6416 filas legítimas y
 se añaden dos pruebas de regresión del lector (104 esperadas).
 Los valores efectivos de Class todavía requieren comprobación local.
 No se alteran los criterios de muestreo, los modelos ni los umbrales.
+
+## Cierre de investigación V0.5 — resultados observados
+
+Registro de la ejecución del desarrollador en Windows, 24-11-2026
+(hora de Chile): 104/104 pruebas aprobadas. PyArrow 26.0.1. Phish360
+contiene 6416 registros con Class=legit y 4332 con Class=phish.
+El protocolo congelado seleccionó 1000 casos de cada clase, 2000 grupos
+distintos; 690 filas excluidas por grupos conocidos, 114 duplicadas y
+21 grupos conflictivos. La comprobación de solapamiento aproximado pasó.
+Se conservaron los tres modelos y sus umbrales. El informe agregado
+local es models/phish360_final.metrics.json, con hashes de los archivos
+y modelos para trazabilidad. No se publican URLs ni modelos.
+
+| Método | Umbral | TN | FP | FN | TP | Precision | Recall | F1 | FPR | Exactitud balanceada |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| Regresión logística original | 0,50 | 50 | 950 | 13 | 987 | 50,96 % | 98,70 % | 67,21 % | 95,00 % | 51,85 % |
+| Random Forest equilibrado | 0,50 | 432 | 568 | 195 | 805 | 58,63 % | 80,50 % | 67,85 % | 56,80 % | 61,85 % |
+| Random Forest híbrido | 0,40 | 368 | 632 | 134 | 866 | 57,81 % | 86,60 % | 69,34 % | 63,20 % | 61,70 % |
+| Heurística | 25 | 990 | 10 | 817 | 183 | 94,82 % | 18,30 % | 30,68 % | 1,00 % | 58,65 % |
+
+Consenso V1: legítimas 365 bajo / 628 incierto / 7 alto; phishing
+113 bajo / 725 incierto / 162 alto. Cobertura 32,35 %; incertidumbre
+67,65 %. La tasa de phishing bajo es 11,3 %. Contar alto e incierto
+juntos cubre 88,7 % de phishing y 63,5 % de legítimas: no equivale
+a detección confirmada. La política no se promueve a la API.
+
+### Interpretación y decisión de cierre
+
+- No se alcanzan simultáneamente las metas exploratorias (precision
+  y recall >=90 %, FPR <=10 %, exactitud balanceada >=90 %).
+- La mejor F1 del híbrido no demuestra que los sintéticos por sí solos
+  causen mejora: también difieren umbral, tamaño de entrenamiento y
+  selección de datos. El equilibrado tiene menor FPR y ligeramente
+  mayor exactitud balanceada en esta muestra.
+- El cambio de distribución entre fuentes es sustancial: Phish360
+  aporta 457 negativas complejas y 918 positivas complejas; 611
+  negativas y 657 positivas HTTP. Incluso en el subconjunto HTTPS
+  el híbrido tiene FPR 67,87 %, frente a 62,47 % del equilibrado.
+  Restringir HTTPS no basta para resolver el sesgo.
+- Los datos son históricos, la selección balanceada no representa
+  prevalencia real y el agrupamiento simplificado no garantiza
+  independencia de campañas. No afirmar rendimiento prospectivo.
+- Se cierra el ciclo de investigación actual sin reajustar con el test
+  Phish360. No promover ningún modelo evaluado como detector fiable.
+  Conservar inferencia opcional únicamente como demostración local
+  experimental, y el candidato de fase 4D bloqueado. El despliegue
+  público previsto debe usar el modo heurístico sin modelos locales
+  ni datasets y advertir que un puntaje bajo no garantiza seguridad.
+  Tampoco la heurística es un detector validado para bloquear URLs.
+- Pendientes de entrega: comprobaciones del frontend, revisión de
+  dependencias y del diff, integración de V0.5 y despliegue seguro.
+  La investigación futura puede estudiar reputación, fuentes más
+  representativas y validación prospectiva con datos nuevos.
+
+Las métricas fueron aportadas por el desarrollador; no se volvieron
+a ejecutar los datos originales en el entorno de revisión.
