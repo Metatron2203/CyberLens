@@ -235,7 +235,7 @@ def train_models(items, *, seed=42, source="CSV etiquetados localmente", model_p
         "test_metrics": test_metrics,
         "baseline_metrics": baseline,
         "samples": {"total": len(y), "phishing": int(sum(y)), "candidate_legitimate": int(sum(1-y)), "train": len(tr), "validation": len(val), "test": len(test), "unique_domains": len(set(groups))},
-        "data_notes": f"{source}; evaluar con corpus externo. La clase legítima basada en Tranco NO es verificación de seguridad. Split agrupado aproximado; no implica validez en producción.",
+        "data_notes": f"{source}; evaluar con corpus externo. Las etiquetas heredadas no verifican seguridad actual. Split agrupado aproximado; no implica validez en producción." + (" Tranco es una fuente de candidatos legítimos, no una verificación de seguridad." if "tranco" in source.casefold() else ""),
     }
     if audit is not None:
         result["dataset_audit"] = audit
