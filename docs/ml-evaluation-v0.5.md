@@ -299,3 +299,37 @@ El laboratorio solo prueba el flujo de análisis léxico y la interacción
 didáctica. No detecta formularios, HTML, robo de credenciales o ataques
 en tiempo real. El entrenamiento multidataset y una evaluación real
 reservada continúan pendientes.
+
+## Fase 4B — modelo candidato con muestreo multidataset
+
+Tras observar 247 falsos positivos de 250 negativos en PhiUSIIL y
+6 de 6 en CyberLens Lab, se añadió un experimento controlado con las
+fuentes locales PhiUSIIL y LegitPhish. Ambas usan la convención
+1=legítima y 0=phishing, que se invierte al preparar los datos.
+
+Desde backend, con los CSV originales, el modelo previo generado por
+la fase 3 y data/phiusiil_external.csv:
+
+    .\.venv\Scripts\python.exe -m unittest discover -s tests -q
+    .\.venv\Scripts\python.exe -m ml_scripts.train_balanced --per-stratum 500
+
+Muestreo reproducible por fuente y complejidad (ruta adicional o query),
+mismo número de cada clase por estrato, únicamente HTTPS. Primero se
+seleccionan estratos complejos. Se descartan grupos conflictivos, grupos
+del corpus previo y los del test histórico PhiUSIIL, y se limita a una
+URL por grupo. Si no hay al menos 25 casos complejos de cada clase y
+100 muestras totales, el programa aborta. No inventa ejemplos para
+completar cuotas. ISCX-URL2016 no se usa por falta de URLs originales.
+
+El resultado se guarda en models/cyberlens_ml_balanced.joblib y
+models/cyberlens_ml_balanced.metrics.json. El archivo activo
+cyberlens_ml.joblib permanece intacto. El informe incluye la auditoría
+matched_sampling con cantidades por fuente y complejidad.
+
+El test reservado pertenece al mismo corpus curado, NO es una prueba
+externa nueva. Restringir HTTPS y emparejar clases son decisiones de
+control experimental, no una política de seguridad ni un reflejo de
+la prevalencia real. Se necesita una fuente externa independiente
+antes de promover el candidato. No entrenar con los casos de CyberLens
+Lab ya observados; conservarlos como diagnóstico, no evidencia final.
+Todos los archivos de datos y modelos permanecen locales.
