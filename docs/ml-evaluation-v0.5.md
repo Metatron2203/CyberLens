@@ -368,3 +368,44 @@ A/B/C y las plantillas ficticias tienen su propio sesgo. No confundir una
 mejora en validación con eficacia externa. No se selecciona el modelo final
 ni se elige un umbral con los tests históricos; se necesita un corpus
 nuevo, independiente y reservado antes de promover un modelo.
+
+## Fase 4D — selección del umbral en validación
+
+La fase 4C fue comprobada con 81 pruebas. En 203 casos de validación
+(109 positivos, 94 negativos), el entrenamiento híbrido obtuvo
+precision 94 %, recall 86,24 %, F1 89,95 % y FPR 6,38 %.
+El modelo solo real obtuvo FPR 8,51 % con el mismo recall.
+En el subconjunto complejo (17 negativos, 20 positivos), las falsas
+alarmas pasaron de 5 a 3. Es evidencia exploratoria, no una estimación
+final ni una comparación que aísle el efecto de tamaño del entrenamiento.
+
+Desde backend, después de actualizar la rama:
+
+    .\.venv\Scripts\python.exe -m unittest discover -s tests -q
+    .\.venv\Scripts\python.exe -m ml_scripts.tune_hybrid_threshold
+
+Reconstruye los 1264 grupos del corpus real y los 320 casos sintéticos
+de la fase 4C. Entrena Random Forest con la misma partición real de
+entrenamiento y sintéticos, sin ajustar con el test de 253 casos ni
+los 500 casos históricos. Explora una malla fija de umbrales de 0.05
+a 1.00 con paso 0.05 únicamente sobre la validación de desarrollo.
+Maximiza verdaderos positivos sujeto a FPR <= 10 % observado; en empate
+minimiza falsos positivos y luego elige el umbral mayor.
+Reporta por separado si alcanza recall >= 90 %. No fuerza una solución
+cuando no hay umbral factible, y no reentrena tras congelar el umbral.
+
+Produce models/hybrid_threshold.metrics.json con la curva y, si hay
+umbral factible, models/cyberlens_ml_hybrid_candidate.joblib. Los dos
+archivos permanecen locales. No sobrescribe resultados anteriores,
+ni modifica el modelo activo. El candidato contiene experimental_only
+y la API rechaza su activación accidental. El evaluador offline usa
+decision_threshold (por defecto 0.5 en modelos anteriores).
+El candidato registra conservadoramente todos los grupos conocidos,
+incluidos los históricos excluidos, para rechazar su reutilización
+como nueva prueba externa.
+
+El informe es de desarrollo y se selecciona en la misma validación ya
+observada: no estima eficacia final ni garantiza el límite FPR fuera
+del conjunto. Un umbral factible no implica que el modelo alcance la
+meta de recall ni que deba desplegarse. La evaluación independiente
+y el motor de decisión con opción incierta siguen pendientes.
