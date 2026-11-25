@@ -92,6 +92,10 @@ def evaluate_cases(cases, bundle: dict, *, source: str, strict: bool) -> dict:
     if not source or len(source) > 120 or any(x in source for x in ("/", "\\", "@", "?", ":")):
         raise ValueError("La fuente debe ser una descripción corta, sin URLs o rutas")
 
+    threshold = bundle.get("decision_threshold", 0.5)
+    if type(threshold) not in (int, float) or not 0 < threshold <= 1:
+        raise ValueError("Umbral del modelo invalido")
+
     fingerprints = bundle.get("dataset_group_fingerprints")
     if strict:
         if not isinstance(fingerprints, (list, tuple)) or not fingerprints:
@@ -118,7 +122,7 @@ def evaluate_cases(cases, bundle: dict, *, source: str, strict: bool) -> dict:
         probability = float(model.predict_proba([features])[0][1])
         if not 0 <= probability <= 1:
             raise ValueError("El modelo produjo una estimación fuera del rango")
-        guess = int(probability >= 0.5)
+        guess = int(probability >= threshold)
         actual.append(label)
         predicted.append(guess)
         baseline.append(int(analyze_url(url)["risk_score"] >= 25))
@@ -133,6 +137,7 @@ def evaluate_cases(cases, bundle: dict, *, source: str, strict: bool) -> dict:
         "sample_count": len(cases),
         "unique_domain_groups": len({group_key(url) for url, _, _ in cases}),
         "group_overlap_check": "passed" if strict else "not verified (synthetic demo)",
+        "decision_threshold": threshold,
         "model_metrics": scores(actual, predicted),
         "heuristic_baseline_metrics": scores(actual, baseline),
         "by_category": {
