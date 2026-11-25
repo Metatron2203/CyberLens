@@ -42,6 +42,21 @@ class ThresholdTests(unittest.TestCase):
             self.assertEqual(bundle["decision_threshold"], report["selection"]["chosen"]["threshold"])
             self.assertNotIn("test_metrics", bundle)
 
+    def test_api_rejects_experimental_candidate(self):
+        import tempfile
+        from pathlib import Path
+        from unittest.mock import Mock, patch
+        from app.ml import model as serving
+        from app.ml.features import FEATURE_SCHEMA, FEATURE_NAMES
+
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "candidate.joblib"
+            path.touch()
+            obj = {"schema": FEATURE_SCHEMA, "feature_names": FEATURE_NAMES,
+                   "model": Mock(), "experimental_only": True}
+            with patch.object(serving, "MODEL_PATH", path), patch("joblib.load", return_value=obj):
+                self.assertFalse(serving.status()["trained"])
+
     def test_fit_rejects_overlap(self):
         real = generate_synthetic(60, seed=11)
         with self.assertRaisesRegex(ValueError, "Solapamiento"):
