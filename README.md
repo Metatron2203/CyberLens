@@ -1,4 +1,4 @@
-# CyberLens V0.4 — heurísticas, redirecciones y ML experimental
+# CyberLens — heurísticas, redirecciones y ML experimental
 
 **Proyecto de título, Ingeniería en Informática.** Evalúa características estructurales de una URL para advertir sobre señales asociadas al phishing **sin visitar la dirección**. Conserva el análisis heurístico, el historial aislado por navegador y el módulo ML opcional de V0.3. En V0.4 incorpora señales explicativas sobre URLs anidadas en parámetros de redirección.
 
@@ -49,7 +49,7 @@ Prepara **dos archivos locales** TXT (una URL por línea) o CSV (con encabezado 
 .\scripts\train_ml_windows.ps1 -PhishingCsv "C:\datos\phishing.csv" -LegitimateCsv "C:\datos\legitimas.csv"
 ```
 
-Se requieren al menos 20 URLs válidas y 12 grupos de dominio distintos por clase. Puedes usar `-MaxPerClass 800` (hasta 10.000). Los archivos y modelos permanecen locales y nunca se suben automáticamente a servicios externos. El entrenamiento guarda:
+Se requieren al menos 20 URLs válidas y 12 grupos de dominio distintos por clase. Puedes usar `-MaxPerClass 800` (hasta 10.000). El script guarda los archivos y modelos localmente y Git los ignora; una carpeta sincronizada (por ejemplo, OneDrive) podría copiarlos a la nube. El entrenamiento guarda:
 
 - `backend/models/cyberlens_ml.joblib` — modelo seleccionado + metadatos; **cárgalo solo si fue generado localmente por CyberLens**. Los archivos `joblib` de terceros no son seguros de deserializar.
 - `backend/models/cyberlens_ml.metrics.json` — comparación de modelos y test final; no contiene URLs de ejemplo.
@@ -99,7 +99,7 @@ https://redirector.example.org/r?next=https%3A%2F%2Fotra.example.net%2Flogin
 
 En V0.4 el motor heurístico muestra `URL anidada en parámetro` y `Destino en otro host` como indicadores informativos **sin puntos adicionales**. Con el ejemplo ficticio anterior se espera **7/100, BAJO** por el término `login`; **BAJO no garantiza seguridad**. El extractor ML también marca características de redirección, pero sin un modelo entrenado no ofrece una predicción ML. Se inspecciona el texto, **no** se verifica un salto de redirección real. Rechazar una cadena pegada de Reddit con Markdown, espacios o `http\://` es **correcto**; esa prueba evalúa el validador, no la detección real de phishing. La cadena reportada en el caso Reddit no debe abrirse en tu navegador.
 
-## V0.5 en desarrollo: auditoría de datasets
+## V0.5: investigación ML completada, integración pendiente
 
 La rama `feature/ml-dataset-audit-v0.5` introduce un reporte agregado de calidad
 de datos (recuentos de entradas, muestras aceptadas y excluidas, grupos de dominio,
@@ -108,8 +108,23 @@ de entrenamiento. El resultado se incorpora a `cyberlens_ml.metrics.json` como
 `dataset_audit` cuando se ejecuta el script de entrenamiento.
 
 El protocolo de investigación y las advertencias sobre permisos y sesgos están en
-[`docs/ml-evaluation-v0.5.md`](docs/ml-evaluation-v0.5.md). **No hay aún
-métricas verificadas con datos reales ni un modelo entrenado para publicar.**
+[`docs/ml-evaluation-v0.5.md`](docs/ml-evaluation-v0.5.md). **Hay resultados históricos medidos por el desarrollador, pero no un modelo validado para publicar.**
+
+### Evaluación de cierre (Phish360)
+
+104/104 pruebas de backend aprobadas en Windows. Evaluación de 2000 URLs
+históricas (1000 por clase) con grupos aproximadamente disjuntos respecto
+a los corpus conocidos. F1 del híbrido: 69,34 %; recall 86,60 %;
+falsos positivos 63,20 %. El equilibrado obtuvo FPR 56,80 % y recall 80,50 %.
+Ningún modelo cumple todas las metas experimentales. El consenso deja
+67,65 % de casos inciertos. Ver resultados completos y límites en
+[`docs/ml-evaluation-v0.5.md`](docs/ml-evaluation-v0.5.md).
+
+Se conserva el código de investigación y los resultados locales, sin
+promover los modelos ni integrar el consenso en la API. Para el despliegue
+público previsto, no copiar datos ni modelos locales: usar el modo
+heurístico educativo, con advertencias claras. Pendientes build, revisión
+ de dependencias y PR #2.
 
 ### Inspeccionar la incertidumbre del primer entrenamiento sin repetir descargas
 
@@ -176,7 +191,7 @@ están en [`docs/ml-evaluation-v0.5.md`](docs/ml-evaluation-v0.5.md).
 3. Separa grupos aproximadamente por dominio registrable (reglas simplificadas; sustituir por Public Suffix List completa si se necesita rigor académico mayor).
 4. Separa conjuntos `train`, `validation` y `test` usando grupos disjuntos. Compara Regresión Logística y Random Forest sobre `validation` y reentrena el ganador en `train+validation`.
 5. Evalúa **una única vez** sobre `test` e informa **precision**, **recall**, **F1** y `TN/FP/FN/TP`. Calcula el mismo conjunto test para la heurística (umbral de precaución ≥25).
-6. El modelo generado no está calibrado para probabilidades fiables y las clases pueden estar sesgadas. La evaluación externa, temporal, robustez, falsos negativos y ensayos de usabilidad quedan para las siguientes etapas.
+6. El modelo generado no está calibrado para probabilidades fiables y las clases pueden estar sesgadas. La evaluación externa histórica de V0.5 está documentada; la validación prospectiva, robustez y ensayos de usabilidad siguen pendientes.
 
 El reportado *accuracy* sobre ejemplos ficticios no es evidencia de desempeño de ciberseguridad. Solo se incluirán métricas verdaderas del dataset que tú entrenes, con fecha y procedencia.
 
@@ -206,4 +221,4 @@ Antes de cambiar una instalación existente, respalda `backend/cyberlens.db` (si
 - `backend/tests/test_redirect_analysis.py`: nueve pruebas de redirección, codificación, dominios internos y privacidad.
 - `docs/roadmap.md`: próximas etapas de validación y entrega.
 
-**CyberLens V0.4 es un prototipo académico con detección léxica de posibles redirecciones y ML implementado en código, NO un detector comercial validado.**
+**CyberLens es un prototipo académico de análisis léxico de URLs y ML experimental, NO un detector comercial validado.**
