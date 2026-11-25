@@ -141,7 +141,7 @@ export default function Home() {
               podrían relacionarse con un intento de phishing.
             </p>
           </div>
-          <span className="version-badge">V0.4 · heurística + redirecciones + ML experimental</span>
+          <span className="version-badge">V0.5 · heurística + redirecciones + ML experimental</span>
         </header>
 
         <section className="panel p-5 md:p-6">
@@ -316,7 +316,7 @@ export default function Home() {
         </section>
 
         <footer className="mt-10 text-center text-xs leading-5 text-slate-600">
-          CyberLens V0.4 — Heurísticas, redirecciones y ML experimental: «BAJO» no significa «SEGURO».
+          CyberLens V0.5 — Heurísticas, redirecciones y ML experimental: «BAJO» no significa «SEGURO».
         </footer>
       </div>
     </main>
