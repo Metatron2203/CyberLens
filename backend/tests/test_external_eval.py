@@ -79,6 +79,16 @@ class ExternalEvaluationTests(unittest.TestCase):
         self.assertIn("ficticias", " ".join(report["limitations"]))
         self.assertNotIn("dataset_group_fingerprints", report)
 
+    def test_frozen_threshold_is_used_and_invalid_value_rejected(self):
+        candidate = bundle()
+        candidate["decision_threshold"] = 0.95
+        report = evaluate_cases(self.cases, candidate, source="Demo ficticia", strict=False)
+        self.assertEqual(report["decision_threshold"], 0.95)
+        self.assertEqual(report["model_metrics"]["support"]["predicted_phishing"], 0)
+        candidate["decision_threshold"] = float("nan")
+        with self.assertRaisesRegex(ValueError, "Umbral"):
+            evaluate_cases(self.cases, candidate, source="Demo ficticia", strict=False)
+
     def test_source_description_cannot_contain_secret_url(self):
         with self.assertRaises(ValueError):
             evaluate_cases(self.cases, bundle(),
