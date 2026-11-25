@@ -467,7 +467,7 @@ Desde backend:
     .\.venv\Scripts\python.exe -m unittest discover -s tests -q
     .\.venv\Scripts\python.exe -m ml_scripts.evaluate_phish360 --accept-academic-use
 
-Lee solamente las columnas URL y class. Verifica que las etiquetas
+Lee solamente las columnas URL y Class (también admite class sin ambigüedad). Verifica que las etiquetas
 concuerden con los archivos, descarta URLs inválidas y duplicadas,
 grupos conflictivos y la unión de grupos conocidos de los tres modelos
 más las muestras históricas. Muestreo fijo semilla 2026, una URL por
@@ -483,3 +483,9 @@ y hashes SHA-256 de archivos, no URLs ni credenciales. No sobrescribir
 ni reajustar modelos tras observar este informe. El resultado es
 histórico y cruzado entre datasets, no validación temporal prospectiva.
 El candidato sigue bloqueado en la API y los tres modelos quedan intactos.
+
+Corrección de esquema: el desarrollador confirmó 6416 filas legítimas y
+4332 phishing, ambas con URL y Class. Las 102 pruebas previas pasaron;
+se añaden dos pruebas de regresión del lector (104 esperadas).
+Los valores efectivos de Class todavía requieren comprobación local.
+No se alteran los criterios de muestreo, los modelos ni los umbrales.
