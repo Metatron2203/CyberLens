@@ -261,3 +261,41 @@ ni que las etiquetas se puedan verificar visitándolos. No abrir URLs
 maliciosas ni tratar 250 ejemplos por clase como evidencia de Internet
 completo. Reportar siempre licencia, año, extracción, versión del modelo,
 definición de clases y sesgos entre corpus.
+
+## Fase 4 — CyberLens Lab (diagnóstico sintético)
+
+Laboratorio educativo independiente de la interfaz pública. Se genera como
+HTML local en backend/data (ignorado por Git). No instalar ni publicar como
+parte de un sitio web. No reproduce interfaces oficiales ni autentica usuarios.
+
+Desde backend:
+
+    .\.venv\Scripts\python.exe -m unittest discover -s tests -q
+    .\.venv\Scripts\python.exe -m ml_scripts.local_lab
+    Start-Process "data\cyberlens_lab.html"
+
+Contiene 12 casos ficticios (6 positivos y 6 negativos), con contextos
+de redes sociales, diseño, correo, consultas y redirecciones. Todos los
+hosts usan el dominio reservado .example y HTTPS. Las etiquetas provienen
+del guion, no del contenido de un sitio real. Copiar las URLs como texto
+a CyberLens, sin navegar a ellas.
+
+La práctica de interacción utiliza únicamente Juanito_777 y DEMO_123.
+No hay formularios de envío, autenticación, almacenamiento, logos oficiales
+ni comunicaciones de red en la página. Los campos de demostración se
+limpian al pulsar el botón. No introducir credenciales reales.
+
+Para evaluar el catálogo con el modelo propio local:
+
+    .\.venv\Scripts\python.exe -m ml_scripts.local_lab --evaluate
+
+Se genera models/local_lab.metrics.json, separado del informe externo
+PhiUSIIL. No reentrena ni modifica el modelo. No usar los resultados
+sintéticos como estimación de eficacia real ni los casos ya revisados
+para seleccionar hiperparámetros y reportar después una prueba final
+sobre esos mismos ejemplos.
+
+El laboratorio solo prueba el flujo de análisis léxico y la interacción
+didáctica. No detecta formularios, HTML, robo de credenciales o ataques
+en tiempo real. El entrenamiento multidataset y una evaluación real
+reservada continúan pendientes.
