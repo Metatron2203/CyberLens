@@ -33,6 +33,9 @@ def _load():
             obj = joblib.load(MODEL_PATH)
             if not isinstance(obj, dict) or obj.get("schema") != FEATURE_SCHEMA or tuple(obj.get("feature_names", [])) != FEATURE_NAMES:
                 return None
+            # Candidatos de desarrollo no se exponen en la API antes de la revisión.
+            if obj.get("experimental_only", False):
+                return None
             if not hasattr(obj.get("model"), "predict_proba"):
                 return None
         except (ImportError, ValueError, TypeError, KeyError, OSError, AttributeError):
