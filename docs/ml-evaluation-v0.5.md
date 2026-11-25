@@ -333,3 +333,38 @@ la prevalencia real. Se necesita una fuente externa independiente
 antes de promover el candidato. No entrenar con los casos de CyberLens
 Lab ya observados; conservarlos como diagnóstico, no evidencia final.
 Todos los archivos de datos y modelos permanecen locales.
+
+## Fase 4C — comparación de datos reales, sintéticos e híbridos
+
+El candidato Random Forest obtuvo 95 % de precision, 88,37 % de recall
+y 4,84 % de falsos positivos en su test interno de 253 muestras.
+En los 500 casos históricos PhiUSIIL (grupos excluidos) obtuvo 95,38 %
+de precision, 49,6 % de recall y 2,4 % de falsos positivos.
+El diagnóstico ficticio de 18 casos permaneció con 100 % de falsos positivos.
+Estos resultados proceden de la consola aportada por el desarrollador.
+
+El módulo generate_synthetic.py genera 160 escenarios hipotéticos por clase
+por defecto, con dominios reservados .test, sin marcas reales, páginas,
+autenticación, datos personales ni conexiones de red. Las etiquetas son
+supuestos experimentales, no evidencia de que una URL sea phishing.
+
+Desde backend:
+
+    .\.venv\Scripts\python.exe -m unittest discover -s tests -q
+    .\.venv\Scripts\python.exe -m ml_scripts.compare_hybrid --synthetic-per-class 160
+
+El comparador reconstruye la muestra HTTPS emparejada de 1264 registros
+y verifica que coincida el conjunto de grupos del candidato anterior
+(esta verificación no garantiza igualdad de todas las filas originales).
+Entrena tres Random Forest con hiperparámetros idénticos:
+A, solo entrenamiento real; B, solo sintético; C, ambos.
+Evalúa exclusivamente en la misma validación real de desarrollo,
+incluyendo desglose simple/complejo. No consulta el test interno ya
+reportado, ni los 500 registros históricos, ni las etiquetas del laboratorio.
+No modifica o publica los modelos. Guarda models/hybrid_comparison.metrics.json.
+
+La comparación es exploratoria: el tamaño de entrenamiento difiere entre
+A/B/C y las plantillas ficticias tienen su propio sesgo. No confundir una
+mejora en validación con eficacia externa. No se selecciona el modelo final
+ni se elige un umbral con los tests históricos; se necesita un corpus
+nuevo, independiente y reservado antes de promover un modelo.
