@@ -68,5 +68,35 @@ class Phish360Tests(unittest.TestCase):
                 list(read_parquet_rows(path, 1))
 
 
+    def test_original_capitalized_class_column(self):
+        try:
+            import pyarrow as pa
+            import pyarrow.parquet as pq
+        except ImportError:
+            self.skipTest("PyArrow opcional para evaluación externa")
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / "fixture.parquet"
+            pq.write_table(pa.table({"URL": ["https://demo.test/"],
+                                     "Class": [" Legitimate "],
+                                     "full_html": ["ignored"]}), path)
+            self.assertEqual(list(read_parquet_rows(path, 0)), [("https://demo.test/", 0)])
+            pq.write_table(pa.table({"URL": ["https://demo.test/"],
+                                     "Class": ["Phishing"]}), path)
+            self.assertEqual(list(read_parquet_rows(path, 1)), [("https://demo.test/", 1)])
+
+    def test_ambiguous_class_columns_rejected(self):
+        try:
+            import pyarrow as pa
+            import pyarrow.parquet as pq
+        except ImportError:
+            self.skipTest("PyArrow opcional para evaluación externa")
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / "fixture.parquet"
+            pq.write_table(pa.table({"URL": ["https://demo.test/"],
+                                     "Class": ["legit"], "class": ["phish"]}), path)
+            with self.assertRaisesRegex(ValueError, "ambiguas"):
+                list(read_parquet_rows(path, 0))
+
+
 if __name__ == "__main__":
     unittest.main()
