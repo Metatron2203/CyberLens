@@ -409,3 +409,37 @@ observada: no estima eficacia final ni garantiza el límite FPR fuera
 del conjunto. Un umbral factible no implica que el modelo alcance la
 meta de recall ni que deba desplegarse. La evaluación independiente
 y el motor de decisión con opción incierta siguen pendientes.
+
+## Fase 4E — consenso experimental con abstención
+
+Fase 4D: 89 pruebas aprobadas en Windows. Umbral seleccionado 0,40:
+96 TP, 13 FN, 9 FP y 85 TN en 203 casos de validación. Recall 88,07 %
+y FPR 9,57 %; meta recall >=90 % no alcanzada. No es test final.
+
+Se añade consensus-v1, una política fija para investigación:
+ambos motores alertan => alto; discrepancia => incierto; ambos por
+debajo del umbral => bajo. ML no disponible => incierto.
+El umbral heurístico es 25 y se respeta decision_threshold del candidato.
+No se modifica la API, no se reentrena y no se usan pruebas históricas
+para ajustar esta regla. Ambos motores comparten señales léxicas:
+su coincidencia no aporta confirmación independiente.
+
+Desde backend:
+
+    .\.venv\Scripts\python.exe -m unittest discover -s tests -q
+    .\.venv\Scripts\python.exe -m ml_scripts.evaluate_consensus
+
+El informe models/consensus_validation.metrics.json presenta la tabla
+de 2 clases por 3 decisiones, cobertura, errores entre las decisiones
+no inciertas, tasa de phishing marcado bajo y tasa de legítimas
+que requieren revisión. Verifica huellas del candidato y reproduce
+sus métricas de validación antes de guardar. Los casos inciertos
+no son detecciones confirmadas ni deben ocultar falsos negativos.
+
+Para una futura evaluación externa, el script admite --external-csv
+y --output con un nuevo JSON. Requiere ambas clases, una URL por grupo,
+y rechaza grupos de dominio previamente conocidos. La separación por
+dominio es aproximada, no verifica procedencia, temporalidad ni seguridad.
+Auditar la fuente y congelar la política antes de examinar sus resultados.
+La política no se activa en la API; requiere evaluación independiente
+y revisión de los riesgos antes de cualquier integración.
