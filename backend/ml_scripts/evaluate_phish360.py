@@ -29,13 +29,21 @@ CLASS_NAMES = {0: {"legit", "legitimate", "benign"}, 1: {"phish", "phishing"}}
 def read_parquet_rows(path, label):
     import pyarrow.parquet as pq
     parquet = pq.ParquetFile(path)
-    if not {"URL", "class"}.issubset(parquet.schema_arrow.names):
-        raise ValueError(f"{path.name}: faltan columnas URL o class")
-    # Proyección de columnas: no materializar HTML, capturas ni otros datos.
-    for batch in parquet.iter_batches(batch_size=512, columns=["URL", "class"]):
+    # Los archivos originales usan Class; admitir class sin ambigüedad.
+    names = parquet.schema_arrow.names
+    class_columns = [name for name in names if name.casefold() == "class"]
+    if names.count("URL") != 1 or len(class_columns) != 1:
+        raise ValueError(f"{path.name}: columnas URL y Class ausentes o ambiguas")
+    class_column = class_columns[0]
+    # Validar todas las etiquetas antes de procesar URLs. No mostrar valores
+    # de etiquetas desconocidos, pues podrían contener contenido inesperado.
+    for batch in parquet.iter_batches(batch_size=512, columns=[class_column]):
         for row in batch.to_pylist():
-            if str(row["class"]).strip().lower() not in CLASS_NAMES[label]:
-                raise ValueError(f"{path.name}: etiqueta no reconocida o contradictoria")
+            if str(row[class_column]).strip().casefold() not in CLASS_NAMES[label]:
+                raise ValueError(f"{path.name}: etiqueta no reconocida o contradictoria; revisa los recuentos de Class")
+    # Proyección de columnas: no materializar HTML, capturas ni otros datos.
+    for batch in parquet.iter_batches(batch_size=512, columns=["URL"]):
+        for row in batch.to_pylist():
             yield row["URL"], label
 
 
