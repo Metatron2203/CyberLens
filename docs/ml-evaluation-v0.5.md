@@ -443,3 +443,43 @@ dominio es aproximada, no verifica procedencia, temporalidad ni seguridad.
 Auditar la fuente y congelar la política antes de examinar sus resultados.
 La política no se activa en la API; requiere evaluación independiente
 y revisión de los riesgos antes de cualquier integración.
+
+## Fase 4F — evaluación externa histórica Phish360
+
+Fase 4E: 97 pruebas aprobadas. En validación, consenso produjo
+85/9/0 casos legítimos y 13/87/9 casos phishing (bajo/incierto/alto).
+La tasa de incertidumbre fue 47,29 % y el 11,93 % del phishing quedó
+en bajo. No se integra esta política en la API.
+
+Fuente: Almakhamreh y Bozkir (2026), CrossPhire,
+https://doi.org/10.3390/app16020751, sección 5.1 y tabla 5.
+Dataset Phish360: https://web.cs.hacettepe.edu.tr/~selman/phish360-dataset/
+Recolección histórica 2020–2023; la independencia de campañas y de las
+fuentes originales no está garantizada. Revisar condiciones de uso antes
+de ejecutar; disponibilidad pública no implica permiso de redistribución.
+
+Archivos esperados en backend/data/Phish360:
+Phish360_legit.parquet y Phish360_phish.parquet.
+PyArrow es una dependencia opcional del evaluador, no de la API.
+Desde backend:
+
+    .\.venv\Scripts\python.exe -m pip install pyarrow
+    .\.venv\Scripts\python.exe -m unittest discover -s tests -q
+    .\.venv\Scripts\python.exe -m ml_scripts.evaluate_phish360 --accept-academic-use
+
+Lee solamente las columnas URL y class. Verifica que las etiquetas
+concuerden con los archivos, descarta URLs inválidas y duplicadas,
+grupos conflictivos y la unión de grupos conocidos de los tres modelos
+más las muestras históricas. Muestreo fijo semilla 2026, una URL por
+grupo, hasta 1000 por clase, mínimo 25. Se incluyen HTTP y HTTPS.
+No seleccionar usando las predicciones. No se guardan URLs extraídas.
+
+Compara regresión logística y Random Forest equilibrado (0,50), candidato
+híbrido (0,40), heurística (25) y consenso V1 sin ajustar parámetros.
+Se reporta por esquema y complejidad para los modelos ML; la precisión
+de una muestra equilibrada no representa la prevalencia real.
+El JSON models/phish360_final.metrics.json contiene métricas agregadas
+y hashes SHA-256 de archivos, no URLs ni credenciales. No sobrescribir
+ni reajustar modelos tras observar este informe. El resultado es
+histórico y cruzado entre datasets, no validación temporal prospectiva.
+El candidato sigue bloqueado en la API y los tres modelos quedan intactos.
