@@ -12,6 +12,7 @@ import csv
 import hashlib
 import io
 import json
+from math import sqrt
 import random
 import urllib.request
 from collections import Counter
@@ -19,6 +20,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from app.analyzer.url_analyzer import analyze_url
+from ml_scripts.audit import dataset_audit
 from app.ml.features import FEATURE_NAMES, FEATURE_SCHEMA, feature_vector, group_key
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
@@ -119,14 +121,54 @@ def prepare(phishing: list[str], legitimate: list[str], limit: int = 10000):
     return filtered, len(conflict)
 
 
+def wilson_interval(successes: int, total: int) -> dict[str, float] | None:
+    """Intervalo aproximado de Wilson al 95 %, por observaciones.
+
+    No considera dependencia entre muestras ni errores de etiquetado;
+    es optimista cuando existen URLs correlacionadas por campañas o fuentes.
+    """
+    if total < 0 or successes < 0 or successes > total:
+        raise ValueError("Recuentos inválidos para el intervalo de Wilson")
+    if total == 0:
+        return None
+    z = 1.959963984540054
+    p = successes / total
+    denom = 1.0 + z * z / total
+    center = (p + z * z / (2.0 * total)) / denom
+    margin = (z / denom) * sqrt(p * (1.0 - p) / total + z * z / (4.0 * total * total))
+    return {"lower": round(max(0.0, center - margin), 4),
+            "upper": round(min(1.0, center + margin), 4)}
+
+
 def scores(y_true, y_pred) -> dict:
     from sklearn.metrics import confusion_matrix, f1_score, precision_score, recall_score
     tn, fp, fn, tp = (int(v) for v in confusion_matrix(y_true, y_pred, labels=[0, 1]).ravel())
+    positive_count = tp + fn
+    negative_count = tn + fp
+    predicted_positive = tp + fp
+    tpr = tp / positive_count if positive_count else None
+    tnr = tn / negative_count if negative_count else None
     return {
         "precision": round(float(precision_score(y_true, y_pred, zero_division=0)), 4),
         "recall": round(float(recall_score(y_true, y_pred, zero_division=0)), 4),
         "f1": round(float(f1_score(y_true, y_pred, zero_division=0)), 4),
         "confusion_matrix": {"tn": tn, "fp": fp, "fn": fn, "tp": tp},
+        "support": {
+            "total": positive_count + negative_count,
+            "phishing": positive_count,
+            "candidate_legitimate": negative_count,
+            "predicted_phishing": predicted_positive,
+        },
+        "error_rates": {
+            "false_negative_rate": round(fn / positive_count, 4) if positive_count else None,
+            "false_positive_rate": round(fp / negative_count, 4) if negative_count else None,
+            "balanced_accuracy": round((tpr + tnr) / 2, 4) if tpr is not None and tnr is not None else None,
+        },
+        "confidence_intervals_95_wilson": {
+            "recall": wilson_interval(tp, positive_count),
+            "precision": wilson_interval(tp, predicted_positive),
+            "false_positive_rate": wilson_interval(fp, negative_count),
+        },
     }
 
 
@@ -150,7 +192,7 @@ def grouped_split(X, y, groups, seed):
     return train, val, test
 
 
-def train_models(items, *, seed=42, source="CSV etiquetados localmente", model_path=None):
+def train_models(items, *, seed=42, source="CSV etiquetados localmente", model_path=None, audit=None):
     """Compara dos modelos en validación; evalúa el elegido UNA VEZ en test."""
     import joblib
     import numpy as np
@@ -186,16 +228,23 @@ def train_models(items, *, seed=42, source="CSV etiquetados localmente", model_p
         "created_utc": created,
         "model_name": winner,
         "model": model,
+        # Solo en el archivo local .joblib: SHA-256 de TODOS los grupos del corpus,
+        # incluido el test original. No publicar: hash no equivale a anonimato.
+        "dataset_group_fingerprints": sorted(str(item) for item in set(groups)),
         "validation_metrics": validations,
         "test_metrics": test_metrics,
         "baseline_metrics": baseline,
         "samples": {"total": len(y), "phishing": int(sum(y)), "candidate_legitimate": int(sum(1-y)), "train": len(tr), "validation": len(val), "test": len(test), "unique_domains": len(set(groups))},
-        "data_notes": f"{source}; evaluar con corpus externo. La clase legítima basada en Tranco NO es verificación de seguridad. Split agrupado aproximado; no implica validez en producción.",
+        "data_notes": f"{source}; evaluar con corpus externo. Las etiquetas heredadas no verifican seguridad actual. Split agrupado aproximado; no implica validez en producción." + (" Tranco es una fuente de candidatos legítimos, no una verificación de seguridad." if "tranco" in source.casefold() else ""),
     }
+    if audit is not None:
+        result["dataset_audit"] = audit
     path = Path(model_path or OUTPUT_DIR / "cyberlens_ml.joblib")
     path.parent.mkdir(parents=True, exist_ok=True)
     joblib.dump(result, path)
-    report = {key: val for key, val in result.items() if key != "model" and key != "feature_names"}
+    report = {key: val for key, val in result.items()
+              if key not in {"model", "feature_names", "dataset_group_fingerprints"}}
+    report["external_evaluation_ready"] = True
     report["feature_names"] = list(FEATURE_NAMES)
     report["methodology"] = "División por grupos de dominio (aproximación), entrenamiento/validación/test sin superposición, selección sobre validación y una sola evaluación final en test. No se usaron URLs de test para entrenar."
     report_path = path.with_suffix(".metrics.json")
@@ -225,14 +274,26 @@ def main(argv=None):
         legitimate = read_urls(args.legitimate, args.max_per_class)
         source = "Archivos locales etiquetados por el investigador"
     items, conflicts = prepare(phishing, legitimate, args.max_per_class)
-    report, path = train_models(items, source=source)
+    audit = dataset_audit(
+        items,
+        phishing_input_count=len(phishing),
+        legitimate_input_count=len(legitimate),
+        conflicting_domain_groups=conflicts,
+        source=source,
+        feature_names=FEATURE_NAMES,
+    )
+    report, path = train_models(items, source=source, audit=audit)
     print("Modelos comparados:")
     for name, metrics in report["validation_metrics"].items():
         print(f"  {name}: precision={metrics['precision']:.3f} recall={metrics['recall']:.3f} F1={metrics['f1']:.3f} (validación)")
     print(f"Modelo elegido: {report['model_name']}")
     print(f"Prueba independiente: {report['test_metrics']}")
+    print("Intervalos de Wilson 95 %: describen incertidumbre muestral aproximada; NO corrigen sesgo ni correlaciones por dominio.")
     print(f"Heurística en el mismo test: {report['baseline_metrics']}")
     print(f"Grupos conflictivos descartados: {conflicts}")
+    print(f"Auditoría de datos: {audit['accepted_counts']}")
+    for warning in audit["warnings"]:
+        print(f"AVISO DE DATOS: {warning}")
     print(f"Informe: {path.with_suffix('.metrics.json')}")
     print("NOTA: estas métricas describen este dataset; no certifican detección general de phishing.")
 

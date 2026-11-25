@@ -39,7 +39,7 @@ class APIIntegrationTests(unittest.TestCase):
     def test_health_returns_current_version(self):
         response = self.client.get("/health")
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json()["version"], "0.4.0")
+        self.assertEqual(response.json()["version"], "0.5.0")
 
     def test_ml_status_endpoint_does_not_break_if_untrained(self):
         response = self.client.get("/api/ml/status")
